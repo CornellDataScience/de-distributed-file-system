@@ -3,15 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct message
+typedef struct message
 {
   int messageType;
-  char *file_path;
+  char file_path[1024]; // Limit file path to 1024 chars
   int isSuccess;
 } message_t;
 
-// convert msg to CJson, then convert to string
-char *encodeMessage(struct message msg);
+void encodeMessage(message_t msg, char *buf);
 
-// convert json_msg string to CJson, then convert CJson to message struct
-struct message decodeMessage(char *json_msg);
+message_t decodeMessage(char *json_msg);
