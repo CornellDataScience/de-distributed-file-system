@@ -12,6 +12,8 @@
 #include <unistd.h>    //write
 #include <pthread.h>   //for threading , link with lpthread
 #include "lockServerMessage.h"
+#include "hashmap.h"
+#include "lock.h"
 
 //the thread function
 void *connection_handler(void *);

@@ -5,6 +5,7 @@
 
 void acquire_lock(message_t lock_msg, int client_id)
 {
+  if ()
 }
 
 void release_lock(message_t lock_msg, int client_id)
