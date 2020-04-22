@@ -8,6 +8,7 @@ typedef struct message
   int messageType;
   char file_path[1024]; // Limit file path to 1024 chars
   int isSuccess;
+  int mode;
 } message_t;
 
 void encodeMessage(message_t msg, char *buf);

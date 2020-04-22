@@ -103,6 +103,7 @@ void *connection_handler(void *socket_desc)
     while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
     {
         //end of string marker
+        printf("%d\n", sock);
         client_message[read_size] = '\0';
         message_t msg;
         msg.messageType = 0;
