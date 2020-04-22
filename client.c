@@ -7,8 +7,9 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include "lockServerMessage.h"
 
-#define PORT 8888 /* the port client will be connecting to */
+#define PORT 8889 /* the port client will be connecting to */
 
 #define MAXDATASIZE 100 /* max number of bytes we can get at once */
 
@@ -48,24 +49,48 @@ int main(int argc, char *argv[])
     perror("connect");
     exit(1);
   }
+  int connection_accepted = 0;
   while (1)
   {
-    if (send(sockfd, "Hello, world!\n", 14, 0) == -1)
+    if (connection_accepted == 0)
+    {
+      char *message = "hello";
+      if (send(sockfd, message, strlen(message), 0) == -1)
+      {
+        perror("send");
+        exit(1);
+      }
+
+      if ((numbytes = recv(sockfd, buf, MAXDATASIZE, 0)) == -1)
+      {
+        perror("recv");
+        exit(1);
+      }
+      connection_accepted = 1;
+    }
+    message_t msg;
+    msg.messageType = 0;
+    strcpy(msg.file_path, "file.txt");
+    msg.isSuccess = 1;
+    char buffer[1024];
+    encodeMessage(msg, buffer);
+
+    if (send(sockfd, buffer, strlen(buffer), 0) == -1)
     {
       perror("send");
       exit(1);
     }
-    printf("After the send function \n");
 
     if ((numbytes = recv(sockfd, buf, MAXDATASIZE, 0)) == -1)
     {
       perror("recv");
       exit(1);
     }
+    printf("Received %u bytes\n", numbytes);
 
     buf[numbytes] = '\0';
 
-    printf("Received in pid=%d, text=: %s \n", getpid(), buf);
+    printf("text=: %s \n", buf);
     sleep(1);
   }
 

@@ -23,18 +23,18 @@ struct message decodeMessage(char *json_msg)
   return msg;
 }
 
-int main()
-{
-  struct message msg;
-  msg.messageType = 0;
-  strcpy(msg.file_path, "file.txt");
-  msg.isSuccess = 1;
-  char buffer[1024];
-  encodeMessage(msg, buffer);
-  printf("%s\n", buffer);
-  msg = decodeMessage(buffer);
-  printf("%s\n", msg.file_path);
-  printf("%i\n", msg.isSuccess);
-  printf("%i\n", msg.messageType);
-  return 0;
-}
+// int main()
+// {
+//   struct message msg;
+//   msg.messageType = 0;
+//   strcpy(msg.file_path, "file.txt");
+//   msg.isSuccess = 1;
+//   char buffer[1024];
+//   encodeMessage(msg, buffer);
+//   printf("%s\n", buffer);
+//   msg = decodeMessage(buffer);
+//   printf("%s\n", msg.file_path);
+//   printf("%i\n", msg.isSuccess);
+//   printf("%i\n", msg.messageType);
+//   return 0;
+// }
