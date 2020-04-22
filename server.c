@@ -15,11 +15,23 @@
 #include "hashmap.h"
 #include "lock.h"
 
-//the thread function
 void *connection_handler(void *);
 
+map_t lock_map;    // lock to file
+map_t lock_status; // lock to if its in use
+
+void acquire_lock(message_t lock_msg, int client_id)
+{
+    if (hashmap_get(lock_map, ))
+}
+void release_lock(message_t lock_msg, int client_id)
+{
+}
+
+//the thread function
 int main(int argc, char *argv[])
 {
+    lock_map = hashmap_new();
     int socket_desc, client_sock, c;
     struct sockaddr_in server, client;
 

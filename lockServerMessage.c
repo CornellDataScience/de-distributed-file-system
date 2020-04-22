@@ -7,6 +7,7 @@ void encodeMessage(message_t msg, char *buf)
   cJSON_AddStringToObject(monitor, "file_path", msg.file_path);
   cJSON_AddNumberToObject(monitor, "isSuccess", msg.isSuccess);
   cJSON_AddNumberToObject(monitor, "messageType", msg.messageType);
+  cJSON_AddNumberToObject(monitor, "lock_id", msg.messageType);
   cJSON_PrintPreallocated(monitor, buf, 2048, 1);
   cJSON_Delete(monitor);
 }
@@ -19,6 +20,7 @@ struct message decodeMessage(char *json_msg)
   strcpy(msg.file_path, s);
   msg.isSuccess = cJSON_GetObjectItemCaseSensitive(monitor_json, "isSuccess")->valueint;
   msg.messageType = cJSON_GetObjectItemCaseSensitive(monitor_json, "messageType")->valueint;
+  msg.messageType = cJSON_GetObjectItemCaseSensitive(monitor_json, "lock_id")->valueint;
   cJSON_Delete(monitor_json);
   return msg;
 }
