@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,3 +17,8 @@ typedef struct message
   char file_path[1024]; // Limit file path to 1024 chars
   int isSuccess;
 } message_t;
+
+void encodeMessage(message_t msg, char *buf);
+
+struct message decodeMessage(char *json_msg);
+

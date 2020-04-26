@@ -52,24 +52,24 @@ int main(int argc, char *argv[])
   int connection_accepted = 0;
   while (1)
   {
-    if (connection_accepted == 0)
-    {
-      char *message = "hello";
-      if (send(sockfd, message, strlen(message), 0) == -1)
-      {
-        perror("send");
-        exit(1);
-      }
+    // if (connection_accepted == 0)
+    // {
+    //   char *message = "hello";
+    //   if (send(sockfd, message, strlen(message), 0) == -1)
+    //   {
+    //     perror("send");
+    //     exit(1);
+    //   }
 
-      if ((numbytes = recv(sockfd, buf, MAXDATASIZE, 0)) == -1)
-      {
-        perror("recv");
-        exit(1);
-      }
-      connection_accepted = 1;
-    }
+    //   if ((numbytes = recv(sockfd, buf, MAXDATASIZE, 0)) == -1)
+    //   {
+    //     perror("recv");
+    //     exit(1);
+    //   }
+    //   connection_accepted = 1;
+    // }
     message_t msg;
-    msg.messageType = 0;
+    msg.messageType = ACQUIRE_LOCK;
     strcpy(msg.file_path, "file.txt");
     msg.isSuccess = 1;
     char buffer[1024];
