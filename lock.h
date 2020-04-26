@@ -5,7 +5,7 @@
 
 typedef struct lock
 {
-  int in_use;                     //0 = not in use, 1 = in use
+  int status;                     //0 = not in use, 1 = in use
   int lock_id;                    // id of the lock
   int client_id;                  //client using this lock
   char file_path[1024];           //path this lock is locking
