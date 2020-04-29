@@ -62,7 +62,8 @@ message_t acquire_lock(message_t lock_msg, int client_id)
     if (hashmap_get(lock_status, lock_msg.file_path,(void**) &ret) == MAP_MISSING)
     // // this a new file
     {
-        // lock_t new_lock;
+        printf("hi\n");
+        lock_t new_lock;
         // new_lock.status = get_status_from_mode(lock_msg.messageType);
         // new_lock.client_id = client_id;
         // strcpy(new_lock.file_path, lock_msg.file_path);
