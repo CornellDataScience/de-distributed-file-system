@@ -22,12 +22,14 @@ void *connection_handler(void *);
 
 typedef struct lock
 {
-    int status;
-    // int lock_id;                    // id of the lock
-    int client_id;                        //client using this lock
-    char file_path[1024];                 //path this lock is locking
-    message_t waiting_buffer[UINT32_MAX]; //other lock_msgs waiting on this lock
-    int num_waiting;                      //number of lock_msgs waiting on queue
+    int status; //0 = not in use, 1 = in use
+    //   int lock_id;                    // id of the lock
+    int client_id;                  //client using this lock
+    char file_path[1024];           //path this lock is locking
+    int waiting_buffer[UINT32_MAX]; //other clients waiting on this lock
+    pthread_mutex_t mutex_lock;     //mutex lock
+    pthread_cond_t lock_cv;         //condition variable
+
 } lock_t;
 
 Hashmap *lock_map;    // file to lock_id
@@ -71,6 +73,8 @@ void send_msg(message_t msg, message_t lock_msg, int status)
 
 message_t acquire_lock(message_t lock_msg, int client_id)
 {
+    lock_t *ret;
+
     // if it doesn't exist, then create the new lock, add the mapping from id to file in lock_map
     // set status to in use
     // client asks for a lock on a file, specified by file path
@@ -82,6 +86,7 @@ message_t acquire_lock(message_t lock_msg, int client_id)
     {
         // create new lock
         lock = malloc(sizeof(lock_t));
+        pthread_mutex_lock(&new_lock.mutex_lock);
         lock->status = get_status_from_mode(lock_msg.messageType);
         lock->client_id = client_id;
         strcpy(lock->file_path, lock_msg.file_path);
@@ -153,6 +158,8 @@ void release_lock(message_t lock_msg, int client_id)
             // pthread_cond_broadcast(cond_var);
             // modify hashmap if needed
             lock->status = 0;
+            pthread_cond_signal(&ret.cond);
+            pthread_mutex_unlock(&ret.mutex);
             // strcpy(msg.file_path, lock_msg.file_path);
             // msg.isSuccess = SUCCESS;
             // msg.messageType = lock_msg.messageType;
