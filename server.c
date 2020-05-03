@@ -13,7 +13,7 @@
 #include <pthread.h>   //for threading , link with lpthread
 #include "lockServerMessage.h"
 #include "hashmap.h"
-
+#include <limits.h>
 void *connection_handler(void *);
 
 #define LOCK_NOT_IN_USE 0
@@ -30,8 +30,23 @@ typedef struct lock
     int num_waiting;                      //number of lock_msgs waiting on queue
 } lock_t;
 
-map_t lock_map;    // file to lock_id
-map_t lock_status; // path to the status (lock in use, not in use)
+Hashmap *lock_map;    // file to lock_id
+Hashmap *lock_status; // path to the status (lock in use, not in use)
+int hash(void *str)
+{
+    char *s = (char *)str;
+    int hash = 5381;
+    int c;
+    while ((c = *s++) != 0)
+        hash = (hash * 31 + c) % INT_MAX;
+
+    return hash;
+}
+
+bool equals(void *input1, void *input2)
+{
+    return strcmp((char *)input1, (char *)input2) == 0;
+}
 
 int get_status_from_mode(int mode)
 {
@@ -48,67 +63,62 @@ int get_status_from_mode(int mode)
 
 message_t acquire_lock(message_t lock_msg, int client_id)
 {
-    lock_t* ret;
     // if it doesn't exist, then create the new lock, add the mapping from id to file in lock_map
     // set status to in use
     // client asks for a lock on a file, specified by file path
     // check lock_map to get id
     // to get lock status of a client's request, we need to check message's mode
-
     message_t msg;
-    printf("In acquire lock \n");
-    // printf("key %s\n", lock_msg.file_path);
-    // hashmap_put(lock_status, lock_msg.file_path, ret);
-    if (hashmap_get(lock_status, lock_msg.file_path,(void**) &ret) == MAP_MISSING)
-    // // this a new file
+    lock_t *lock;
+    if ((lock = (lock_t *)hashmapGet(lock_status, lock_msg.file_path)) == NULL)
     {
-        // lock_t new_lock;
-        // new_lock.status = get_status_from_mode(lock_msg.messageType);
-        // new_lock.client_id = client_id;
-        // strcpy(new_lock.file_path, lock_msg.file_path);
-        // // printf("here\n");
-        // // // message it was successful
-        // strcpy(msg.file_path, lock_msg.file_path);
-        // msg.isSuccess = SUCCESS;
-        // msg.messageType = lock_msg.messageType;
-        // printf("Return message\n");
-        // return msg;
+        // create new lock
+        lock = malloc(sizeof(lock_t));
+        lock->status = get_status_from_mode(lock_msg.messageType);
+        lock->client_id = client_id;
+        strcpy(lock->file_path, lock_msg.file_path);
+        strcpy(msg.file_path, lock_msg.file_path);
+        msg.isSuccess = SUCCESS;
+        msg.messageType = lock_msg.messageType;
+        hashmapPut(lock_status, lock->file_path, lock);
+        return msg;
     }
-    // else // if file has already been locked before
-    // {
-    //     if (ret.status == LOCK_NOT_IN_USE)
-    //     {
-    //         ret.status = get_status_from_mode(lock_msg.messageType);
-    //         strcpy(msg.file_path, lock_msg.file_path);
-    //         msg.isSuccess = SUCCESS;
-    //         msg.messageType = lock_msg.messageType;
-    //         // // send message to client that locking was successful
-    //     }
-    //     else // add to lock's queue
-    //     {
-    //         // if (ret.status == LOCK_READING)
-    //         // {
-    //         // }
-    //         // else
-    //         // {
-    //         ret.waiting_buffer[ret.num_waiting++] = lock_msg;
-    //         strcpy(msg.file_path, lock_msg.file_path);
-    //         msg.isSuccess = WAITING;
-    //         msg.messageType = lock_msg.messageType;
-    //         // }
-    //     }
-    // }
+    else // if file has already been locked before
+    {
+        if (lock->status == LOCK_NOT_IN_USE)
+        {
+            lock->status = get_status_from_mode(lock_msg.messageType);
+            strcpy(msg.file_path, lock_msg.file_path);
+            msg.isSuccess = SUCCESS;
+            msg.messageType = lock_msg.messageType;
+            // // send message to client that locking was successful
+        }
+        else // add to lock's queue
+        {
+            // if (ret.status == LOCK_READING)
+            // {
+            // }
+            // else
+            // {
+            // ret.waiting_buffer[ret.num_waiting++] = lock_msg;
+            // strcpy(msg.file_path, lock_msg.file_path);
+            // msg.isSuccess = WAITING;
+            // msg.messageType = lock_msg.messageType;
+            // }
+        }
+    }
     return lock_msg;
 }
 
 // void release_lock(message_t lock_msg, int client_id)
 // {
+
 // }
 
 //the thread function
 int main(int argc, char *argv[])
 {
-    lock_status = hashmap_new();
+    lock_status = hashmapCreate(10, &hash, equals);
     int socket_desc, client_sock, c;
     struct sockaddr_in server, client;
 
@@ -158,7 +168,7 @@ int main(int argc, char *argv[])
         }
 
         //Now join the thread , so that we dont terminate before the thread
-        pthread_join( thread_id , NULL);
+        pthread_join(thread_id, NULL);
         puts("Handler assigned");
     }
 
@@ -194,30 +204,19 @@ void *connection_handler(void *socket_desc)
     //Receive a message from client
     while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
     {
-        //end of string marker
-        printf("%d\n", sock);
-        printf("%s\n", client_message);
         client_message[read_size] = '\0';
         message_t msg = decodeMessage(client_message);
         if (msg.messageType == ACQUIRE_LOCK)
         {
             new_msg = acquire_lock(msg, sock);
-            // printf("Finish acquiring lock\n");
             // sock is client id
         }
         else if (msg.messageType == RELEASE_LOCK)
         {
             // stuff
         }
-
-        // wants to aquire
-
-        // message_t msg;
-        // msg.messageType = 0;
-        // strcpy(msg.file_path, "file123.txt");
-        // msg.isSuccess = 1;
         char buffer[1024];
-        encodeMessage(msg, buffer);
+        encodeMessage(new_msg, buffer);
         //Send the message back to client
         // write(sock, client_message, strlen(client_message));
         write(sock, buffer, strlen(buffer));
