@@ -61,6 +61,14 @@ int get_status_from_mode(int mode)
     }
 }
 
+// send message with status "status"
+void send_msg(message_t msg, message_t lock_msg, int status)
+{
+    strcpy(msg.file_path, lock_msg.file_path);
+    msg.isSuccess = status;
+    msg.messageType = lock_msg.messageType;
+}
+
 message_t acquire_lock(message_t lock_msg, int client_id)
 {
     // if it doesn't exist, then create the new lock, add the mapping from id to file in lock_map
@@ -77,9 +85,10 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         lock->status = get_status_from_mode(lock_msg.messageType);
         lock->client_id = client_id;
         strcpy(lock->file_path, lock_msg.file_path);
-        strcpy(msg.file_path, lock_msg.file_path);
-        msg.isSuccess = SUCCESS;
-        msg.messageType = lock_msg.messageType;
+        // strcpy(msg.file_path, lock_msg.file_path);
+        // msg.isSuccess = SUCCESS;
+        // msg.messageType = lock_msg.messageType;
+        send_msg(msg, lock_msg, SUCCESS);
         hashmapPut(lock_status, lock->file_path, lock);
         return msg;
     }
@@ -88,9 +97,10 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         if (lock->status == LOCK_NOT_IN_USE)
         {
             lock->status = get_status_from_mode(lock_msg.messageType);
-            strcpy(msg.file_path, lock_msg.file_path);
-            msg.isSuccess = SUCCESS;
-            msg.messageType = lock_msg.messageType;
+            // strcpy(msg.file_path, lock_msg.file_path);
+            // msg.isSuccess = SUCCESS;
+            // msg.messageType = lock_msg.messageType;
+            send_msg(msg, lock_msg, SUCCESS);
             // // send message to client that locking was successful
         }
         else // add to lock's queue
@@ -106,9 +116,10 @@ message_t acquire_lock(message_t lock_msg, int client_id)
             // msg.messageType = lock_msg.messageType;
             // }
             lock->waiting_buffer[lock->num_waiting++] = lock_msg;
-            strcpy(msg.file_path, lock_msg.file_path);
-            msg.isSuccess = WAITING;
-            msg.messageType = lock_msg.messageType;
+            // strcpy(msg.file_path, lock_msg.file_path);
+            // msg.isSuccess = WAITING;
+            // msg.messageType = lock_msg.messageType;
+            send_msg(msg, lock_msg, WAITING);
         }
     }
     return lock_msg;
@@ -123,28 +134,32 @@ void release_lock(message_t lock_msg, int client_id)
     {
         // if the lock doesn't exist
         // send message to the client that
-        strcpy(msg.file_path, lock_msg.file_path);
-        msg.isSuccess = NO_SUCCESS;
-        msg.messageType = lock_msg.messageType;
+        // strcpy(msg.file_path, lock_msg.file_path);
+        // msg.isSuccess = NO_SUCCESS;
+        // msg.messageType = lock_msg.messageType;
+        send_msg(msg, lock_msg, NO_SUCCESS);
     }
     else
     {
         if (lock->client_id != client_id)
         { // client is not holding that lock
-            strcpy(msg.file_path, lock_msg.file_path);
-            msg.isSuccess = NO_SUCCESS;
-            msg.messageType = lock_msg.messageType;
+            // strcpy(msg.file_path, lock_msg.file_path);
+            // msg.isSuccess = NO_SUCCESS;
+            // msg.messageType = lock_msg.messageType;
+            send_msg(msg, lock_msg, NO_SUCCESS);
         }
         else
         {
             // pthread_cond_broadcast(cond_var);
             // modify hashmap if needed
             lock->status = 0;
-            strcpy(msg.file_path, lock_msg.file_path);
-            msg.isSuccess = SUCCESS;
-            msg.messageType = lock_msg.messageType;
+            // strcpy(msg.file_path, lock_msg.file_path);
+            // msg.isSuccess = SUCCESS;
+            // msg.messageType = lock_msg.messageType;
+            send_msg(msg, lock_msg, SUCCESS);
         }
     }
+    return msg;
 }
 
 //the thread function
