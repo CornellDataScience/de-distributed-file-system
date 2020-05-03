@@ -105,6 +105,10 @@ message_t acquire_lock(message_t lock_msg, int client_id)
             // msg.isSuccess = WAITING;
             // msg.messageType = lock_msg.messageType;
             // }
+            lock->waiting_buffer[lock->num_waiting++] = lock_msg;
+            strcpy(msg.file_path, lock_msg.file_path);
+            msg.isSuccess = WAITING;
+            msg.messageType = lock_msg.messageType;
         }
     }
     return lock_msg;
@@ -112,10 +116,10 @@ message_t acquire_lock(message_t lock_msg, int client_id)
 
 void release_lock(message_t lock_msg, int client_id)
 {
-    lock_t *ret; // contains lock we want to release
+    lock_t *lock; // contains lock we want to release
     message_t msg;
 
-    if (hashmap_get(lock_status, lock_msg.file_path, (void **)&ret) == MAP_MISSING)
+    if ((lock = (lock_t *)hashmapGet(lock_status, lock_msg.file_path)) == NULL)
     {
         // if the lock doesn't exist
         // send message to the client that
@@ -125,7 +129,7 @@ void release_lock(message_t lock_msg, int client_id)
     }
     else
     {
-        if (ret->client_id != client_id)
+        if (lock->client_id != client_id)
         { // client is not holding that lock
             strcpy(msg.file_path, lock_msg.file_path);
             msg.isSuccess = NO_SUCCESS;
@@ -135,7 +139,7 @@ void release_lock(message_t lock_msg, int client_id)
         {
             // pthread_cond_broadcast(cond_var);
             // modify hashmap if needed
-            ret->status = 0;
+            lock->status = 0;
             strcpy(msg.file_path, lock_msg.file_path);
             msg.isSuccess = SUCCESS;
             msg.messageType = lock_msg.messageType;
