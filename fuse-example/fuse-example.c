@@ -68,14 +68,19 @@ int create_connection()
 
 int send_receive_msg(message_t msg, char *filepath, int status, int messageType, char *buffer, int sockfd)
 {
+	printf("SENDING MESSAGE \n");
 	strcpy(msg.file_path, filepath);
 	msg.isSuccess = status;
 	msg.messageType = messageType;
 	encodeMessage(msg, buffer);
 	send(sockfd, buffer, strlen(buffer), 0);
+	printf("SENT MESSAGE\n");
 	recv(sockfd, buffer, MAXDATASIZE, 0);
 	message_t received;
+	printf("RECEIVED MESSAGE\n");
+	printf("MESSAGE IS %s", buffer);
 	received = decodeMessage(buffer);
+	printf("RETURNING\n");
 	return received.isSuccess;
 }
 
