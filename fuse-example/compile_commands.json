@@ -1,7 +1,7 @@
 [
 {
-  "directory": "/Users/bryant/Desktop/distributed file system/fuse-example",
-  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  -I/usr/local/include/osxfuse   -D_FILE_OFFSET_BITS=64 -g -Wall --pedantic -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk   -o CMakeFiles/fuse-example.dir/fuse-example.c.o   -c \"/Users/bryant/Desktop/distributed file system/fuse-example/fuse-example.c\"",
-  "file": "/Users/bryant/Desktop/distributed file system/fuse-example/fuse-example.c"
+  "directory": "/Users/juliang/Desktop/CDS/Frangipani/de-distributed-file-system/fuse-example",
+  "command": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/cc  -I/usr/local/include/osxfuse   -D_FILE_OFFSET_BITS=64 -g -Wall --pedantic -g -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.15.sdk   -o CMakeFiles/fuse-example.dir/fuse-example.c.o   -c /Users/juliang/Desktop/CDS/Frangipani/de-distributed-file-system/fuse-example/fuse-example.c",
+  "file": "/Users/juliang/Desktop/CDS/Frangipani/de-distributed-file-system/fuse-example/fuse-example.c"
 }
 ]
