@@ -132,7 +132,7 @@ message_t acquire_lock(message_t lock_msg, int client_id)
     return lock_msg;
 }
 
-void release_lock(message_t lock_msg, int client_id)
+message_t release_lock(message_t lock_msg, int client_id)
 {
     lock_t *lock; // contains lock we want to release
     message_t msg;
@@ -247,40 +247,52 @@ void *connection_handler(void *socket_desc)
     int sock = *(int *)socket_desc;
     int read_size;
     char *message, client_message[2000];
-
-    //Send some messages to the client
-    // message = "Greetings! I am your connection handler\n";
+    message_t new_msg;
+    message_t msg = decodeMessage(client_message);
+    if (msg.messageType == ACQUIRE_LOCK)
+    {
+        new_msg = acquire_lock(msg, sock);
+        // sock is client id
+    }
+    else if (msg.messageType == RELEASE_LOCK)
+    {
+        new_msg = release_lock(msg, sock);
+        // stuff
+    }
+    char buffer[1024];
+    encodeMessage(new_msg, buffer);
+    //Send the message back to client
+    // write(sock, client_message, strlen(client_message));
+    write(sock, buffer, strlen(buffer));
+    // message = "Client accepted";
     // write(sock, message, strlen(message));
-    message = "Client accepted";
-    write(sock, message, strlen(message));
 
     // message = "Now type something and i shall repeat what you type \n";
     // write(sock, message, strlen(message));
-
-    message_t new_msg;
     //Receive a message from client
-    while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
-    {
-        client_message[read_size] = '\0';
-        message_t msg = decodeMessage(client_message);
-        if (msg.messageType == ACQUIRE_LOCK)
-        {
-            new_msg = acquire_lock(msg, sock);
-            // sock is client id
-        }
-        else if (msg.messageType == RELEASE_LOCK)
-        {
-            // stuff
-        }
-        char buffer[1024];
-        encodeMessage(new_msg, buffer);
-        //Send the message back to client
-        // write(sock, client_message, strlen(client_message));
-        write(sock, buffer, strlen(buffer));
+    // while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
+    // {
+    //     client_message[read_size] = '\0';
+    //     message_t msg = decodeMessage(client_message);
+    //     if (msg.messageType == ACQUIRE_LOCK)
+    //     {
+    //         new_msg = acquire_lock(msg, sock);
+    //         // sock is client id
+    //     }
+    //     else if (msg.messageType == RELEASE_LOCK)
+    //     {
+    //         new_msg = release_lock(msg, sock);
+    //         // stuff
+    //     }
+    //     char buffer[1024];
+    //     encodeMessage(new_msg, buffer);
+    //     //Send the message back to client
+    //     // write(sock, client_message, strlen(client_message));
+    //     write(sock, buffer, strlen(buffer));
 
-        //clear the message buffer
-        memset(client_message, 0, 2000);
-    }
+    //     //clear the message buffer
+    //     memset(client_message, 0, 2000);
+    // }
 
     if (read_size == 0)
     {
