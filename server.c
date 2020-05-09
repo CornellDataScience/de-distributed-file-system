@@ -22,7 +22,7 @@ void *connection_handler(void *);
 
 typedef struct lock
 {
-    int status; //0 = not in use, 1 = in use
+    int status;
     //   int lock_id;                    // id of the lock
     int client_id;                  //client using this lock
     char file_path[1024];           //path this lock is locking
@@ -258,6 +258,10 @@ void *connection_handler(void *socket_desc)
     {
         new_msg = release_lock(msg, sock);
         // stuff
+    }
+    else if (msg.messageType == REQUEST_READ)
+    {
+        send_msg(new_msg, msg, SUCCESS);
     }
     char buffer[1024];
     encodeMessage(new_msg, buffer);
