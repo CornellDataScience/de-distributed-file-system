@@ -95,19 +95,12 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         // create new lock
         lock = malloc(sizeof(lock_t));
         pthread_mutex_lock(&lock->mutex_lock);
-        printf("got lock\n");
         lock->num_waiting = 0;
         lock->status = get_status_from_mode(lock_msg.messageType);
         lock->client_id = client_id;
         strcpy(lock->file_path, lock_msg.file_path);
-        // strcpy(msg.file_path, lock_msg.file_path);
-        // msg.isSuccess = SUCCESS;
-        // msg.messageType = lock_msg.messageType;
-        printf("sending message\n");
         send_msg(&msg, lock_msg, SUCCESS);
-        printf("message sent\n");
         hashmapPut(lock_status, lock->file_path, lock);
-        printf("returning");
         return msg;
     }
     else // if file has already been locked before
@@ -116,19 +109,17 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         {
             lock = malloc(sizeof(lock_t));
             pthread_mutex_lock(&lock->mutex_lock);
+            // lock->waiting_buffer[lock->num_waiting++] = client_id;
             lock->num_waiting = 0;
             lock->status = get_status_from_mode(lock_msg.messageType);
             lock->client_id = client_id;
             strcpy(lock->file_path, lock_msg.file_path);
             send_msg(&msg, lock_msg, SUCCESS);
-            // // send message to client that locking was successful
         }
         else // add to lock's queue
         {
-            // FIX THIS PART!
             pthread_cond_wait(&lock->lock_cv, &lock->mutex_lock);
-            lock->waiting_buffer[lock->num_waiting++];
-
+            // lock->waiting_buffer[lock->num_waiting++] = client_id;
             send_msg(&msg, lock_msg, WAITING);
         }
     }
@@ -155,8 +146,10 @@ message_t release_lock(message_t lock_msg, int client_id)
         else
         {
             // modify hashmap if needed
-            lock->status = 0;
+            lock->status = LOCK_NOT_IN_USE;
+
             pthread_mutex_unlock(&lock->mutex_lock);
+
             pthread_cond_signal(&lock->lock_cv);
             send_msg(&msg, lock_msg, SUCCESS);
         }
@@ -182,7 +175,7 @@ int main(int argc, char *argv[])
     //Prepare the sockaddr_in structure
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(9000);
+    server.sin_port = htons(9001);
 
     //Bind
     if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0)
@@ -195,7 +188,6 @@ int main(int argc, char *argv[])
     listen(socket_desc, 3);
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
-    puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
     pthread_t thread_id;
     client_info_t info;
@@ -232,17 +224,13 @@ void *connection_handler(void *socket_desc)
     int sock = *(int *)socket_desc;
     int read_size;
     char client_message[2000];
-    printf("receiving message\n");
     while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
     {
-        printf("received message\n");
         message_t new_msg;
         message_t msg = decodeMessage(client_message);
         if (msg.messageType == ACQUIRE_LOCK)
         {
-            printf("I am here\n");
             new_msg = acquire_lock(msg, sock);
-            printf("message value %d\n", new_msg.isSuccess);
             // sock is client id
         }
         else if (msg.messageType == RELEASE_LOCK)
@@ -255,40 +243,8 @@ void *connection_handler(void *socket_desc)
             send_msg(&new_msg, msg, SUCCESS);
         }
         char buffer[1024];
-        printf("MESSAGE HAS SUCCESS VALUE OF %d", new_msg.isSuccess);
         encodeMessage(new_msg, buffer);
-        printf("About to write %s\n", buffer);
         write(sock, buffer, strlen(buffer));
-        printf("done writing\n");
-        // message = "Client accepted";
-        // write(sock, message, strlen(message));
-
-        // message = "Now type something and i shall repeat what you type \n";
-        // write(sock, message, strlen(message));
-        //Receive a message from client
-        // while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
-        // {
-        //     client_message[read_size] = '\0';
-        //     message_t msg = decodeMessage(client_message);
-        //     if (msg.messageType == ACQUIRE_LOCK)
-        //     {
-        //         new_msg = acquire_lock(msg, sock);
-        //         // sock is client id
-        //     }
-        //     else if (msg.messageType == RELEASE_LOCK)
-        //     {
-        //         new_msg = release_lock(msg, sock);
-        //         // stuff
-        //     }
-        //     char buffer[1024];
-        //     encodeMessage(new_msg, buffer);
-        //     //Send the message back to client
-        //     // write(sock, client_message, strlen(client_message));
-        //     write(sock, buffer, strlen(buffer));
-
-        //     //clear the message buffer
-        //     memset(client_message, 0, 2000);
-        // }
 
         if (read_size == 0)
         {
@@ -299,7 +255,6 @@ void *connection_handler(void *socket_desc)
         {
             perror("recv failed");
         }
-        printf("done with function\n");
     }
     return 0;
 }

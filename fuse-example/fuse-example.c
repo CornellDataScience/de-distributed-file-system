@@ -28,7 +28,7 @@
 
 // ... //
 
-#define PORT 9000 /* the port client will be connecting to */
+#define PORT 9001 /* the port client will be connecting to */
 
 #define MAXDATASIZE 100 /* max number of bytes we can get at once */
 
@@ -71,19 +71,14 @@ int create_connection()
 
 int send_receive_msg(message_t msg, char *filepath, int status, int messageType, char *buffer, int sockfd)
 {
-	printf("SENDING MESSAGE \n");
 	strcpy(msg.file_path, filepath);
 	msg.isSuccess = status;
 	msg.messageType = messageType;
 	encodeMessage(msg, buffer);
 	send(sockfd, buffer, strlen(buffer), 0);
-	printf("SENT MESSAGE\n");
 	recv(sockfd, buffer, MAXDATASIZE, 0);
 	message_t received;
-	printf("RECEIVED MESSAGE\n");
-	printf("MESSAGE IS %s", buffer);
 	received = decodeMessage(buffer);
-	printf("RETURNING\n");
 	return received.isSuccess;
 }
 
@@ -196,7 +191,6 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 		for (int curr_idx = 0; curr_idx <= curr_file_idx; curr_idx++)
 			filler(buffer, files_list[curr_idx], NULL, 0);
 	}
-
 	return 0;
 }
 
@@ -207,13 +201,13 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	int sockfd = create_connection();
 	while (send_receive_msg(msg, path, SUCCESS, REQUEST_READ, buf, sockfd) != 1)
 		;
+	close(sockfd);
 	int file_idx = get_file_index(path);
 
 	if (file_idx == -1)
 		return -1;
 
 	char *content = files_content[file_idx];
-
 	memcpy(buffer, content + offset, size);
 	return strlen(content) - offset;
 }
@@ -223,16 +217,13 @@ static int do_mkdir(const char *path, mode_t mode)
 	message_t msg;
 	char buffer[1024];
 	int sockfd = create_connection();
-	printf("connection created\n");
-	while (send_receive_msg(msg, path, SUCCESS, ACQUIRE_LOCK, buffer, sockfd) != 1)
-	{
-		printf("waiting\n");
-	}; // spin lock
+	char *copy = malloc(strlen(path) + 1);
+	strcpy(copy, path);
+	while (send_receive_msg(msg, copy, SUCCESS, ACQUIRE_LOCK, buffer, sockfd) != 1)
+		; // spin lock
 	path++;
 	add_dir(path);
-	printf("releasing lock\n");
-	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buffer, sockfd);
-	printf("lock has been released\n");
+	send_receive_msg(msg, copy, SUCCESS, RELEASE_LOCK, buffer, sockfd);
 	close(sockfd);
 	return 0;
 }
@@ -248,6 +239,7 @@ static int do_mknod(const char *path, mode_t mode, dev_t rdev)
 	path++;
 	add_file(path);
 	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buffer, sockfd);
+	close(sockfd);
 	return 0;
 }
 
@@ -260,6 +252,7 @@ static int do_write(const char *path, const char *buffer, size_t size, off_t off
 		; // spin lock
 	write_to_file(path, buffer);
 	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buf, sockfd);
+	close(sockfd);
 	return size;
 }
 
