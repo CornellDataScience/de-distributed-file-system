@@ -28,7 +28,7 @@
 
 // ... //
 
-#define PORT 8889 /* the port client will be connecting to */
+#define PORT 9000 /* the port client will be connecting to */
 
 #define MAXDATASIZE 100 /* max number of bytes we can get at once */
 
@@ -62,20 +62,26 @@ int create_connection()
 		perror("connect");
 		exit(1);
 	}
+	// char buffer = [512];
+	// strcpy(buffer, "hi");
+	// send(sockfd, buffer, strlen(buffer));
 	//int connection_accepted = 0;
 	return sockfd;
 }
 
 int send_receive_msg(message_t msg, char *filepath, int status, int messageType, char *buffer, int sockfd)
 {
+	printf("sending message\n");
 	strcpy(msg.file_path, filepath);
 	msg.isSuccess = status;
 	msg.messageType = messageType;
 	encodeMessage(msg, buffer);
 	send(sockfd, buffer, strlen(buffer), 0);
+	printf("waiting to receive message");
 	recv(sockfd, buffer, MAXDATASIZE, 0);
 	message_t received;
 	received = decodeMessage(buffer);
+	printf("success number %d", received.isSuccess);
 	return received.isSuccess;
 }
 
@@ -211,11 +217,17 @@ static int do_mkdir(const char *path, mode_t mode)
 	message_t msg;
 	char buffer[1024];
 	int sockfd = create_connection();
+	printf("connection created\n");
 	while (send_receive_msg(msg, path, SUCCESS, ACQUIRE_LOCK, buffer, sockfd) != 1)
-		; // spin lock
+	{
+		printf("waiting\n");
+	}; // spin lock
 	path++;
 	add_dir(path);
+	printf("releasing lock\n");
 	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buffer, sockfd);
+	printf("lock has been released\n");
+	close(sockfd);
 	return 0;
 }
 

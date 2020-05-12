@@ -22,8 +22,7 @@ void *connection_handler(void *);
 
 typedef struct lock
 {
-    int status; //0 = not in use, 1 = in use
-    //   int lock_id;                    // id of the lock
+    int status;
     int client_id;                  //client using this lock
     char file_path[1024];           //path this lock is locking
     int waiting_buffer[UINT32_MAX]; //other clients waiting on this lock
@@ -32,6 +31,13 @@ typedef struct lock
     pthread_cond_t lock_cv;     //condition variable
 
 } lock_t;
+
+typedef struct client_info
+{
+    int sockfd;
+    char *message;
+
+} client_info_t;
 
 Hashmap *lock_map;    // file to lock_id
 Hashmap *lock_status; // path to the status (lock in use, not in use)
@@ -65,11 +71,12 @@ int get_status_from_mode(int mode)
 }
 
 // send message with status "status"
-void send_msg(message_t msg, message_t lock_msg, int status)
+void send_msg(message_t *msg, message_t lock_msg, int status)
 {
-    strcpy(msg.file_path, lock_msg.file_path);
-    msg.isSuccess = status;
-    msg.messageType = lock_msg.messageType;
+    strcpy(msg->file_path, lock_msg.file_path);
+    printf("SENDING SUCCESS VALUE OF %d", status);
+    msg->isSuccess = status;
+    msg->messageType = lock_msg.messageType;
 }
 
 message_t acquire_lock(message_t lock_msg, int client_id)
@@ -88,6 +95,7 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         // create new lock
         lock = malloc(sizeof(lock_t));
         pthread_mutex_lock(&lock->mutex_lock);
+        printf("got lock\n");
         lock->num_waiting = 0;
         lock->status = get_status_from_mode(lock_msg.messageType);
         lock->client_id = client_id;
@@ -95,8 +103,11 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         // strcpy(msg.file_path, lock_msg.file_path);
         // msg.isSuccess = SUCCESS;
         // msg.messageType = lock_msg.messageType;
-        send_msg(msg, lock_msg, SUCCESS);
+        printf("sending message\n");
+        send_msg(&msg, lock_msg, SUCCESS);
+        printf("message sent\n");
         hashmapPut(lock_status, lock->file_path, lock);
+        printf("returning");
         return msg;
     }
     else // if file has already been locked before
@@ -104,29 +115,15 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         if (lock->status == LOCK_NOT_IN_USE)
         {
             lock->status = get_status_from_mode(lock_msg.messageType);
-            // strcpy(msg.file_path, lock_msg.file_path);
-            // msg.isSuccess = SUCCESS;
-            // msg.messageType = lock_msg.messageType;
-            send_msg(msg, lock_msg, SUCCESS);
+            send_msg(&msg, lock_msg, SUCCESS);
             // // send message to client that locking was successful
         }
         else // add to lock's queue
         {
-            // if (ret.status == LOCK_READING)
-            // {
-            // }
-            // else
-            // {
-            // ret.waiting_buffer[ret.num_waiting++] = lock_msg;
-            // strcpy(msg.file_path, lock_msg.file_path);
-            // msg.isSuccess = WAITING;
-            // msg.messageType = lock_msg.messageType;
-            // }
+            // FIX THIS PART!
             lock->waiting_buffer[lock->num_waiting++];
-            // strcpy(msg.file_path, lock_msg.file_path);
-            // msg.isSuccess = WAITING;
-            // msg.messageType = lock_msg.messageType;
-            send_msg(msg, lock_msg, WAITING);
+
+            send_msg(&msg, lock_msg, WAITING);
         }
     }
     return lock_msg;
@@ -141,32 +138,21 @@ message_t release_lock(message_t lock_msg, int client_id)
     {
         // if the lock doesn't exist
         // send message to the client that
-        // strcpy(msg.file_path, lock_msg.file_path);
-        // msg.isSuccess = NO_SUCCESS;
-        // msg.messageType = lock_msg.messageType;
-        send_msg(msg, lock_msg, NO_SUCCESS);
+        send_msg(&msg, lock_msg, NO_SUCCESS);
     }
     else
     {
         if (lock->client_id != client_id)
         { // client is not holding that lock
-            // strcpy(msg.file_path, lock_msg.file_path);
-            // msg.isSuccess = NO_SUCCESS;
-            // msg.messageType = lock_msg.messageType;
-            send_msg(msg, lock_msg, NO_SUCCESS);
+            send_msg(&msg, lock_msg, NO_SUCCESS);
         }
         else
         {
-            // pthread_cond_broadcast(cond_var);
             // modify hashmap if needed
             lock->status = 0;
             pthread_mutex_unlock(&lock->mutex_lock);
-
             pthread_cond_signal(&lock->lock_cv);
-            // strcpy(msg.file_path, lock_msg.file_path);
-            // msg.isSuccess = SUCCESS;
-            // msg.messageType = lock_msg.messageType;
-            send_msg(msg, lock_msg, SUCCESS);
+            send_msg(&msg, lock_msg, SUCCESS);
         }
     }
     return msg;
@@ -190,7 +176,7 @@ int main(int argc, char *argv[])
     //Prepare the sockaddr_in structure
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
-    server.sin_port = htons(8889);
+    server.sin_port = htons(9000);
 
     //Bind
     if (bind(socket_desc, (struct sockaddr *)&server, sizeof(server)) < 0)
@@ -200,24 +186,17 @@ int main(int argc, char *argv[])
         return 1;
     }
     puts("bind done");
-
-    //Listen
     listen(socket_desc, 3);
-
-    //Accept and incoming connection
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
-
-    //Accept and incoming connection
     puts("Waiting for incoming connections...");
     c = sizeof(struct sockaddr_in);
     pthread_t thread_id;
+    client_info_t info;
 
     while ((client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t *)&c)))
     {
-
         puts("Connection accepted");
-
         if (pthread_create(&thread_id, NULL, connection_handler, (void *)&client_sock) < 0)
         {
             perror("could not create thread");
@@ -246,63 +225,71 @@ void *connection_handler(void *socket_desc)
     //Get the socket descriptor
     int sock = *(int *)socket_desc;
     int read_size;
-    char *message, client_message[2000];
-    message_t new_msg;
-    message_t msg = decodeMessage(client_message);
-    if (msg.messageType == ACQUIRE_LOCK)
+    char client_message[2000];
+    printf("receiving message\n");
+    while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
     {
-        new_msg = acquire_lock(msg, sock);
-        // sock is client id
-    }
-    else if (msg.messageType == RELEASE_LOCK)
-    {
-        new_msg = release_lock(msg, sock);
-        // stuff
-    }
-    char buffer[1024];
-    encodeMessage(new_msg, buffer);
-    //Send the message back to client
-    // write(sock, client_message, strlen(client_message));
-    write(sock, buffer, strlen(buffer));
-    // message = "Client accepted";
-    // write(sock, message, strlen(message));
+        printf("received message\n");
+        message_t new_msg;
+        message_t msg = decodeMessage(client_message);
+        if (msg.messageType == ACQUIRE_LOCK)
+        {
+            printf("I am here\n");
+            new_msg = acquire_lock(msg, sock);
+            printf("message value %d\n", new_msg.isSuccess);
+            // sock is client id
+        }
+        else if (msg.messageType == RELEASE_LOCK)
+        {
+            new_msg = release_lock(msg, sock);
+            // stuff
+        }
+        char buffer[1024];
+        printf("MESSAGE HAS SUCCESS VALUE OF %d", new_msg.isSuccess);
+        encodeMessage(new_msg, buffer);
+        printf("About to write %s\n", buffer);
+        write(sock, buffer, strlen(buffer));
+        printf("done writing\n");
+        // message = "Client accepted";
+        // write(sock, message, strlen(message));
 
-    // message = "Now type something and i shall repeat what you type \n";
-    // write(sock, message, strlen(message));
-    //Receive a message from client
-    // while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
-    // {
-    //     client_message[read_size] = '\0';
-    //     message_t msg = decodeMessage(client_message);
-    //     if (msg.messageType == ACQUIRE_LOCK)
-    //     {
-    //         new_msg = acquire_lock(msg, sock);
-    //         // sock is client id
-    //     }
-    //     else if (msg.messageType == RELEASE_LOCK)
-    //     {
-    //         new_msg = release_lock(msg, sock);
-    //         // stuff
-    //     }
-    //     char buffer[1024];
-    //     encodeMessage(new_msg, buffer);
-    //     //Send the message back to client
-    //     // write(sock, client_message, strlen(client_message));
-    //     write(sock, buffer, strlen(buffer));
+        // message = "Now type something and i shall repeat what you type \n";
+        // write(sock, message, strlen(message));
+        //Receive a message from client
+        // while ((read_size = recv(sock, client_message, 2000, 0)) > 0)
+        // {
+        //     client_message[read_size] = '\0';
+        //     message_t msg = decodeMessage(client_message);
+        //     if (msg.messageType == ACQUIRE_LOCK)
+        //     {
+        //         new_msg = acquire_lock(msg, sock);
+        //         // sock is client id
+        //     }
+        //     else if (msg.messageType == RELEASE_LOCK)
+        //     {
+        //         new_msg = release_lock(msg, sock);
+        //         // stuff
+        //     }
+        //     char buffer[1024];
+        //     encodeMessage(new_msg, buffer);
+        //     //Send the message back to client
+        //     // write(sock, client_message, strlen(client_message));
+        //     write(sock, buffer, strlen(buffer));
 
-    //     //clear the message buffer
-    //     memset(client_message, 0, 2000);
-    // }
+        //     //clear the message buffer
+        //     memset(client_message, 0, 2000);
+        // }
 
-    if (read_size == 0)
-    {
-        puts("Client disconnected");
-        fflush(stdout);
+        if (read_size == 0)
+        {
+            puts("Client disconnected");
+            fflush(stdout);
+        }
+        else if (read_size == -1)
+        {
+            perror("recv failed");
+        }
+        printf("done with function\n");
     }
-    else if (read_size == -1)
-    {
-        perror("recv failed");
-    }
-
     return 0;
 }
