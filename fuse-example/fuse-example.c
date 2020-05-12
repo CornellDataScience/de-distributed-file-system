@@ -203,9 +203,9 @@ static int do_readdir(const char *path, void *buffer, fuse_fill_dir_t filler, of
 static int do_read(const char *path, char *buffer, size_t size, off_t offset, struct fuse_file_info *fi)
 {
 	message_t msg;
-	char buffer[1024];
+	char buf[1024];
 	int sockfd = create_connection();
-	while (send_receive_msg(msg, path, SUCCESS, REQUEST_READ, buffer, sockfd) != 1)
+	while (send_receive_msg(msg, path, SUCCESS, REQUEST_READ, buf, sockfd) != 1)
 		;
 	int file_idx = get_file_index(path);
 
@@ -215,7 +215,6 @@ static int do_read(const char *path, char *buffer, size_t size, off_t offset, st
 	char *content = files_content[file_idx];
 
 	memcpy(buffer, content + offset, size);
-
 	return strlen(content) - offset;
 }
 
@@ -255,12 +254,12 @@ static int do_mknod(const char *path, mode_t mode, dev_t rdev)
 static int do_write(const char *path, const char *buffer, size_t size, off_t offset, struct fuse_file_info *info)
 {
 	message_t msg;
-	char buffer[1024];
+	char buf[1024];
 	int sockfd = create_connection();
-	while (send_receive_msg(msg, path, SUCCESS, ACQUIRE_LOCK, buffer, sockfd) != 1)
+	while (send_receive_msg(msg, path, SUCCESS, ACQUIRE_LOCK, buf, sockfd) != 1)
 		; // spin lock
 	write_to_file(path, buffer);
-	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buffer, sockfd);
+	send_receive_msg(msg, path, SUCCESS, RELEASE_LOCK, buf, sockfd);
 	return size;
 }
 
