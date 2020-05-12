@@ -114,13 +114,19 @@ message_t acquire_lock(message_t lock_msg, int client_id)
     {
         if (lock->status == LOCK_NOT_IN_USE)
         {
+            lock = malloc(sizeof(lock_t));
+            pthread_mutex_lock(&lock->mutex_lock);
+            lock->num_waiting = 0;
             lock->status = get_status_from_mode(lock_msg.messageType);
+            lock->client_id = client_id;
+            strcpy(lock->file_path, lock_msg.file_path);
             send_msg(&msg, lock_msg, SUCCESS);
             // // send message to client that locking was successful
         }
         else // add to lock's queue
         {
             // FIX THIS PART!
+            pthread_cond_wait(&lock->lock_cv, &lock->mutex_lock);
             lock->waiting_buffer[lock->num_waiting++];
 
             send_msg(&msg, lock_msg, WAITING);
