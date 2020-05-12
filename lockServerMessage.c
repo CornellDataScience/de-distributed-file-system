@@ -17,6 +17,10 @@ struct message decodeMessage(char *json_msg)
   message_t msg;
   cJSON *monitor_json = cJSON_Parse(json_msg);
   char *s = cJSON_GetObjectItemCaseSensitive(monitor_json, "file_path")->valuestring;
+  if (s[0] == '/')
+  {
+    s++;
+  }
   strcpy(msg.file_path, s);
   msg.isSuccess = cJSON_GetObjectItemCaseSensitive(monitor_json, "isSuccess")->valueint;
   msg.messageType = cJSON_GetObjectItemCaseSensitive(monitor_json, "messageType")->valueint;
