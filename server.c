@@ -244,6 +244,10 @@ void *connection_handler(void *socket_desc)
             new_msg = release_lock(msg, sock);
             // stuff
         }
+        else if (msg.messageType == REQUEST_READ)
+        {
+            send_msg(&new_msg, msg, SUCCESS);
+        }
         char buffer[1024];
         printf("MESSAGE HAS SUCCESS VALUE OF %d", new_msg.isSuccess);
         encodeMessage(new_msg, buffer);
