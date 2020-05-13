@@ -23,10 +23,8 @@ void *connection_handler(void *);
 typedef struct lock
 {
     int status;
-    int client_id;                  //client using this lock
-    char file_path[1024];           //path this lock is locking
-    int waiting_buffer[UINT32_MAX]; //other clients waiting on this lock
-    int num_waiting;
+    int client_id;              //client using this lock
+    char file_path[1024];       //path this lock is locking
     pthread_mutex_t mutex_lock; //mutex lock
     pthread_cond_t lock_cv;     //condition variable
 
@@ -74,7 +72,7 @@ int get_status_from_mode(int mode)
 void send_msg(message_t *msg, message_t lock_msg, int status)
 {
     strcpy(msg->file_path, lock_msg.file_path);
-    printf("SENDING SUCCESS VALUE OF %d", status);
+    // printf("SENDING SUCCESS VALUE OF %d", status);
     msg->isSuccess = status;
     msg->messageType = lock_msg.messageType;
 }
@@ -95,7 +93,7 @@ message_t acquire_lock(message_t lock_msg, int client_id)
         // create new lock
         lock = malloc(sizeof(lock_t));
         pthread_mutex_lock(&lock->mutex_lock);
-        lock->num_waiting = 0;
+        // lock->num_waiting = 0;
         lock->status = get_status_from_mode(lock_msg.messageType);
         lock->client_id = client_id;
         strcpy(lock->file_path, lock_msg.file_path);
@@ -110,7 +108,7 @@ message_t acquire_lock(message_t lock_msg, int client_id)
             lock = malloc(sizeof(lock_t));
             pthread_mutex_lock(&lock->mutex_lock);
             // lock->waiting_buffer[lock->num_waiting++] = client_id;
-            lock->num_waiting = 0;
+            // lock->num_waiting = 0;
             lock->status = get_status_from_mode(lock_msg.messageType);
             lock->client_id = client_id;
             strcpy(lock->file_path, lock_msg.file_path);
